@@ -232,7 +232,7 @@ class Scrambler
         if (file_exists($file = "{$this->contextDirectory}/obfuscator/context/{$this->scrambleType}")) {
             $t = unserialize(file_get_contents($file));
             if ($t[0] !== self::SCRAMBLER_CONTEXT_VERSION) {
-                fprintf(STDERR, "Error:\tContext format has changed! run with --clean option!" . PHP_EOL);
+                fprintf(STDERR, "Error:\tContext format has changed! run with --clean option!".PHP_EOL);
                 $this->contextDirectory = null;        // do not overwrite incoherent values when exiting
                 exit(1);
             }
@@ -283,7 +283,7 @@ class Scrambler
 
     public function scramble(string $s)
     {
-        dump('scrambling: ' . $s);
+        dump('scrambling: '.$s);
         $r = $s;
         // $r = $this->caseSensitive ? $s : strtolower($s);
         if (in_array($r, $this->tIgnore)) {
@@ -319,6 +319,7 @@ class Scrambler
         }
 
         return $this->tScramble[$r];
+
         return $this->caseSensitive ? $this->tScramble[$r] : $this->case_shuffle($this->tScramble[$r]);
     }
 

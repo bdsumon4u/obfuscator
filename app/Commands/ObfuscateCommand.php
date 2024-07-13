@@ -2,21 +2,19 @@
 
 namespace App\Commands;
 
+use App\Commands\Traits\{HasConfig, HasFile, HasParser};
 use App\Facades\Hotash;
 use App\HotashPrinter;
 use App\ObfuscationVisitor;
-use App\Scrambler;
 use Generator;
 use Illuminate\Console\Scheduling\Schedule;
 use LaravelZero\Framework\Commands\Command;
 use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitor\NameResolver;
-use PhpParser\Parser;
 use PhpParser\ParserFactory;
 
 class ObfuscateCommand extends Command
 {
-    private Parser $parser;
+    use HasConfig, HasFile, HasParser;
 
     /**
      * The name and signature of the console command.
@@ -25,7 +23,27 @@ class ObfuscateCommand extends Command
      */
     protected $signature = 'obfuscate
         {project : The project directory to obfuscate}
-        {output=output : The output directory to save}';
+        {output=output : The output directory to save}
+        {--shuffle-statements : Enable statement shuffling}
+        {--shuffle-min-chunk-size=1 : Minimum chunk size for statement shuffling}
+        {--shuffle-chunk-mode=fixed : Chunk mode for statement shuffling (fixed or ratio)}
+        {--shuffle-chunk-ratio=5 : Chunk ratio for statement shuffling (percentage)}
+        {--obfuscate-string-literal : Enable obfuscation of string literals}
+        {--obfuscate-loop-statement : Enable obfuscation of loop statements}
+        {--obfuscate-if-statement : Enable obfuscation of if statements}
+        {--obfuscate-constant-name : Enable obfuscation of constant names}
+        {--obfuscate-variable-name : Enable obfuscation of variable names}
+        {--obfuscate-function-name : Enable obfuscation of function names}
+        {--obfuscate-class-name : Enable obfuscation of class names}
+        {--obfuscate-konstant-name : Enable obfuscation of constant names}
+        {--obfuscate-interface-name : Enable obfuscation of interface names}
+        {--obfuscate-trait-name : Enable obfuscation of trait names}
+        {--obfuscate-property-name : Enable obfuscation of property names}
+        {--obfuscate-method-name : Enable obfuscation of method names}
+        {--obfuscate-namespace-name : Enable obfuscation of namespace names}
+        {--obfuscate-label-name : Enable obfuscation of label names}
+        {--strip-indentation : Enable stripping of indentation}
+        {--config : Allow prompts for configuration}';
 
     /**
      * The console command description.
@@ -41,18 +59,12 @@ class ObfuscateCommand extends Command
         parent::__construct();
 
         Hotash::processDefinedClassNames();
-
-        Hotash::stack_push('t_ignore_variables', 'var');
+        
         Hotash::put('t_ignore_pre_defined_classes', 'all');
 
-        // $scrambler = Scrambler::make('variable');
-        // dump($scrambler->scramble('request'));
-        // dd($scrambler->scramble('request'));
+        $this->traverser->addVisitor(new ObfuscationVisitor);
 
         $this->parser = (new ParserFactory)->createForHostVersion();
-
-        // $this->traverser->addVisitor(new NameResolver);
-        $this->traverser->addVisitor(new ObfuscationVisitor);
     }
 
     /**
@@ -62,54 +74,17 @@ class ObfuscateCommand extends Command
     {
         $this->info('Obfuscating project...');
 
+        $this->processOptions();
+        if ($this->option('config')) {
+            $this->createPhpParser();
+            $this->processArguments();
+        }
+
         foreach ($this->getPhpFiles() as $file) {
             $this->obfuscateFile($file);
         }
 
         $this->info('Obfuscation complete.');
-    }
-
-    private function getPhpFiles(): Generator
-    {
-        $projectDir = $this->argument('project');
-
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($projectDir),
-            \RecursiveIteratorIterator::SELF_FIRST
-        );
-
-        foreach ($iterator as $file) {
-            if ($file->getExtension() === 'php') {
-                yield $file->getPathname();
-            }
-        }
-    }
-
-    private function obfuscateFile($file): void
-    {
-        try {
-            $code = file_get_contents($file);
-            $nodes = $this->parser->parse($code);
-            $stmts = $this->traverser->traverse($nodes);
-            $code = $this->printer->prettyPrintFile($stmts);
-            file_put_contents($this->outputPath($file), $code);
-        } catch (\PhpParser\Error $e) {
-            $this->error("Parse error: {$e->getMessage()}");
-        }
-    }
-
-    private function outputPath($file): string
-    {
-        $projectDir = $this->argument('project');
-        $outputDir = $this->argument('output');
-
-        $outputFile = str_replace($projectDir, $outputDir, $file);
-
-        if (! file_exists(dirname($outputFile))) {
-            mkdir(dirname($outputFile), 0755, true);
-        }
-
-        return $outputFile;
     }
 
     /**

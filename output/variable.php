@@ -2,24 +2,22 @@
 
 namespace App\Functions;
 
-class xfdffa6cd5
-{
-}
-if (!function_exists("\170\x35\x33\67\63\63\63\66\x34\x65")) {
-    function x53733364e(xfdffa6cd5 $var): xfdffa6cd5
+class xa59bde35c {}
+if (! function_exists("\x78\x38\141\x62\x64\x38\x37\x64\x63\141")) {
+    function x8abd87dca(xa59bde35c $var): xa59bde35c
     {
         return $var;
     }
 }
-$xcfd13fee8 = function ($var) {
+$x14c682c36 = function ($var) {
     return $var;
 };
 try {
-    $var = "\x48\x65\x6c\x6c\x6f";
-    $x2c614b508 = "\166\x61\162";
-    echo ${$x2c614b508};
-    $xcfd13fee8($var);
-} catch (REt $xe31f2c31e) {
-    echo $xe31f2c31e->getMessage();
+    $var = "\x48\145\154\154\x6f";
+    $x9066aa138 = "\x76\141\162";
+    echo ${$x9066aa138};
+    $x14c682c36($var);
+} catch (xa59bde35c $x0503d8c6c) {
+    echo $x0503d8c6c->getMessage();
 }
-x53733364e("\170\x79\x7a");
+x8abd87dca("\170\171\172");

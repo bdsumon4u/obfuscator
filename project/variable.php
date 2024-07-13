@@ -2,9 +2,13 @@
 
 namespace App\Functions;
 
-class REt {};
+function self() {
 
-if (!function_exists('abc')) {
+}
+
+class throw {}
+
+if (! function_exists('abc')) {
     function abc(REt $var): REt
     {
         return $var;
@@ -24,6 +28,5 @@ try {
 } catch (REt $e) {
     echo $e->getMessage();
 }
-
 
 abc('xyz');

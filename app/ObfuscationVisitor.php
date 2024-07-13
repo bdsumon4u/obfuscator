@@ -14,14 +14,14 @@ class ObfuscationVisitor extends NodeVisitorAbstract
         if ($stack = Hotash::get('t_node_stack')) {
             $node->setAttribute('parent', end($stack));
         }
-        Hotash::stack_push('t_node_stack', $node);
+        Hotash::stack('t_node_stack', $node);
 
         // Obfuscate Loop Statements
         if (($node instanceof Node\Stmt\For_) || ($node instanceof Node\Stmt\Foreach_) || ($node instanceof Node\Stmt\Switch_)
             || ($node instanceof Node\Stmt\While_) || ($node instanceof Node\Stmt\Do_)
         ) {
             $scrambler = Scrambler::make('label');
-            Hotash::stack_push('t_loop_stack', [
+            Hotash::stack('t_loop_stack', [
                 $scrambler->generateLabelName(),
                 $scrambler->generateLabelName(),
             ]);
@@ -98,12 +98,12 @@ class ObfuscationVisitor extends NodeVisitorAbstract
                 if ($node->name->getLast() === 'function_exists') {
                     $arg = current($node->getArgs())->value;
                     if (! $arg instanceof Node\Scalar\String_) {
-                        throw new Exception('Error: your use of function_exists() function is not compatible with obfuscator!' . PHP_EOL . "\tOnly 1 literal string parameter is allowed...");
+                        throw new Exception('Error: your use of function_exists() function is not compatible with obfuscator!'.PHP_EOL."\tOnly 1 literal string parameter is allowed...");
                     }
-                    
+
                     $arg->value = $scrambler->scramble($arg->value);
                 }
-            } else if (! $node->name instanceof Node\Expr\Variable) {
+            } elseif (! $node->name instanceof Node\Expr\Variable) {
                 dump('function name is not a Name or Variable');
             }
         }
@@ -172,7 +172,7 @@ class ObfuscationVisitor extends NodeVisitorAbstract
                 );
             }
         }
-        
+
         return $node;
     }
 }
