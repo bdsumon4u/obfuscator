@@ -241,7 +241,7 @@ class ObfuscationVisitor extends NodeVisitorAbstract
 
         // Obfuscate Interface Names
         if (Hotash::get('t_obfuscate_interface_name')) {
-            $scrambler = Hotash::scambler('interface');
+            $scrambler = Hotash::scrambler('interface');
             if ($node instanceof Node\Stmt\Interface_) {
                 $node->name = new Node\Identifier(
                     $scrambler->scramble($node->name),
@@ -471,70 +471,72 @@ class ObfuscationVisitor extends NodeVisitorAbstract
 
         // Obfuscate If Statements
         if (Hotash::get('t_obfuscate_if_statement')) {                  // if else elseif   are replaced by goto ...
-            $scrambler = Hotash::scrambler('label');
-            $condition = $node->cond;
-            $stmts = $node->stmts;
+            if ($node instanceof Node\Stmt\If_) {
+                $scrambler = Hotash::scrambler('label');
+                $condition = $node->cond;
+                $stmts = $node->stmts;
 
-            if ($elseifs = $node->elseifs) {       // elseif mode
-                $label_endif_name = $scrambler->generateLabelName();
-                $label_endif = [new Node\Stmt\Label($label_endif_name)];
-                $goto_endif = [new Node\Stmt\Goto_($label_endif_name)];
+                if ($elseifs = $node->elseifs) {       // elseif mode
+                    $label_endif_name = $scrambler->generateLabelName();
+                    $label_endif = [new Node\Stmt\Label($label_endif_name)];
+                    $goto_endif = [new Node\Stmt\Goto_($label_endif_name)];
 
-                $new_nodes_1 = [];
-                $new_nodes_2 = [];
-                $label_if_name = $scrambler->generateLabelName();
-                $label_if = [new Node\Stmt\Label($label_if_name)];
-                $goto_if = [new Node\Stmt\Goto_($label_if_name)];
-                $if = new Node\Stmt\If_($condition);
-                $if->stmts = $goto_if;
-                $new_nodes_1 = array_merge($new_nodes_1, [$if]);
-                $new_nodes_2 = array_merge($new_nodes_2, $label_if, $stmts, $goto_endif);
-
-                for ($i = 0; $i < count($elseifs); $i++) {
-                    $condition = $elseifs[$i]->cond;
-                    $stmts = $elseifs[$i]->stmts;
+                    $new_nodes_1 = [];
+                    $new_nodes_2 = [];
                     $label_if_name = $scrambler->generateLabelName();
                     $label_if = [new Node\Stmt\Label($label_if_name)];
                     $goto_if = [new Node\Stmt\Goto_($label_if_name)];
                     $if = new Node\Stmt\If_($condition);
                     $if->stmts = $goto_if;
                     $new_nodes_1 = array_merge($new_nodes_1, [$if]);
-                    $new_nodes_2 = array_merge($new_nodes_2, $label_if, $stmts);
-                    if ($i < count($elseifs) - 1) {
-                        $new_nodes_2 = array_merge($new_nodes_2, $goto_endif);
+                    $new_nodes_2 = array_merge($new_nodes_2, $label_if, $stmts, $goto_endif);
+
+                    for ($i = 0; $i < count($elseifs); $i++) {
+                        $condition = $elseifs[$i]->cond;
+                        $stmts = $elseifs[$i]->stmts;
+                        $label_if_name = $scrambler->generateLabelName();
+                        $label_if = [new Node\Stmt\Label($label_if_name)];
+                        $goto_if = [new Node\Stmt\Goto_($label_if_name)];
+                        $if = new Node\Stmt\If_($condition);
+                        $if->stmts = $goto_if;
+                        $new_nodes_1 = array_merge($new_nodes_1, [$if]);
+                        $new_nodes_2 = array_merge($new_nodes_2, $label_if, $stmts);
+                        if ($i < count($elseifs) - 1) {
+                            $new_nodes_2 = array_merge($new_nodes_2, $goto_endif);
+                        }
                     }
-                }
-                if (isset($else)) {
-                    $new_nodes_1 = array_merge($new_nodes_1, $else);
-                }
-                $new_nodes_1 = array_merge($new_nodes_1, $goto_endif);
-                $new_nodes_2 = array_merge($new_nodes_2, $label_endif);
+                    if (isset($else)) {
+                        $new_nodes_1 = array_merge($new_nodes_1, $else);
+                    }
+                    $new_nodes_1 = array_merge($new_nodes_1, $goto_endif);
+                    $new_nodes_2 = array_merge($new_nodes_2, $label_endif);
 
-                return array_merge($new_nodes_1, $new_nodes_2);
-            } elseif ($stmts = $node->else?->stmts) {       // if else mode
-                $label_then_name = $scrambler->generateLabelName();
-                $label_then = [new Node\Stmt\Label($label_then_name)];
-                $goto_then = [new Node\Stmt\Goto_($label_then_name)];
-                $label_endif_name = $scrambler->generateLabelName();
-                $label_endif = [new Node\Stmt\Label($label_endif_name)];
-                $goto_endif = [new Node\Stmt\Goto_($label_endif_name)];
-                $node->stmts = $goto_then;
-                $node->else = null;
+                    return array_merge($new_nodes_1, $new_nodes_2);
+                } elseif ($else = $node->else?->stmts) {       // if else mode
+                    $label_then_name = $scrambler->generateLabelName();
+                    $label_then = [new Node\Stmt\Label($label_then_name)];
+                    $goto_then = [new Node\Stmt\Goto_($label_then_name)];
+                    $label_endif_name = $scrambler->generateLabelName();
+                    $label_endif = [new Node\Stmt\Label($label_endif_name)];
+                    $goto_endif = [new Node\Stmt\Goto_($label_endif_name)];
+                    $node->stmts = $goto_then;
+                    $node->else = null;
 
-                return array_merge([$node], $stmts, $goto_endif, $label_then, $stmts, $label_endif);
-            } else { // no else statement found
-                if ($condition instanceof Node\Expr\BooleanNot) {     // avoid !! in generated code
-                    $new_condition = $condition->expr;
-                } else {
-                    $new_condition = new Node\Expr\BooleanNot($condition);
+                    return array_merge([$node], $else, $goto_endif, $label_then, $stmts, $label_endif);
+                } else { // no else statement found
+                    if ($condition instanceof Node\Expr\BooleanNot) {     // avoid !! in generated code
+                        $new_condition = $condition->expr;
+                    } else {
+                        $new_condition = new Node\Expr\BooleanNot($condition);
+                    }
+                    $label_endif_name = $scrambler->generateLabelName();
+                    $label_endif = [new Node\Stmt\Label($label_endif_name)];
+                    $goto_endif = [new Node\Stmt\Goto_($label_endif_name)];
+                    $node->cond = $new_condition;
+                    $node->stmts = $goto_endif;
+
+                    return array_merge([$node], $stmts, $label_endif);
                 }
-                $label_endif_name = $scrambler->generateLabelName();
-                $label_endif = [new Node\Stmt\Label($label_endif_name)];
-                $goto_endif = [new Node\Stmt\Goto_($label_endif_name)];
-                $node->cond = $new_condition;
-                $node->stmts = $goto_endif;
-
-                return array_merge([$node], $stmts, $label_endif);
             }
         }
 

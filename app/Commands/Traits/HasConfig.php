@@ -144,72 +144,24 @@ trait HasConfig
 
     private function processOptions(): void
     {
-        if ($this->option('shuffle-statements')) {
-            Hotash::put('t_shuffle_statements', true);
-
-            Hotash::put('t_shuffle_statements_min_chunk_size', $this->option('shuffle-min-chunk-size'));
-            Hotash::put('t_shuffle_statements_chunk_mode', $this->option('shuffle-chunk-mode'));
-            Hotash::put('t_shuffle_statements_chunk_ratio', $this->option('shuffle-chunk-ratio'));
-        }
-
-        if ($this->option('obfuscate-string-literal')) {
-            Hotash::put('t_obfuscate_string_literal', true);
-        }
-
-        if ($this->option('obfuscate-loop-statement')) {
-            Hotash::put('t_obfuscate_loop_statement', true);
-        }
-
-        if ($this->option('obfuscate-if-statement')) {
-            Hotash::put('t_obfuscate_if_statement', true);
-        }
-
-        if ($this->option('obfuscate-constant-name')) {
-            Hotash::put('t_obfuscate_constant_name', true);
-        }
-
-        if ($this->option('obfuscate-variable-name')) {
-            Hotash::put('t_obfuscate_variable_name', true);
-        }
-
-        if ($this->option('obfuscate-function-name')) {
-            Hotash::put('t_obfuscate_function_name', true);
-        }
-
-        if ($this->option('obfuscate-class-name')) {
-            Hotash::put('t_obfuscate_class_name', true);
-        }
-
-        if ($this->option('obfuscate-konstant-name')) {
-            Hotash::put('t_obfuscate_konstant_name', true);
-        }
-
-        if ($this->option('obfuscate-interface-name')) {
-            Hotash::put('t_obfuscate_interface_name', true);
-        }
-
-        if ($this->option('obfuscate-trait-name')) {
-            Hotash::put('t_obfuscate_trait_name', true);
-        }
-
-        if ($this->option('obfuscate-property-name')) {
-            Hotash::put('t_obfuscate_property_name', true);
-        }
-
-        if ($this->option('obfuscate-method-name')) {
-            Hotash::put('t_obfuscate_method_name', true);
-        }
-
-        if ($this->option('obfuscate-namespace-name')) {
-            Hotash::put('t_obfuscate_namespace_name', true);
-        }
-
-        if ($this->option('obfuscate-label-name')) {
-            Hotash::put('t_obfuscate_label_name', true);
-        }
-
-        if ($this->option('strip-indentation')) {
-            Hotash::put('t_strip_indentation', true);
-        }
+        Hotash::put('t_shuffle_statements', ! $this->option('no-shuffle-statements'));
+        Hotash::put('t_shuffle_statements_min_chunk_size', $this->option('shuffle-min-chunk-size'));
+        Hotash::put('t_shuffle_statements_chunk_mode', $this->option('shuffle-chunk-mode'));
+        Hotash::put('t_shuffle_statements_chunk_ratio', $this->option('shuffle-chunk-ratio'));
+        Hotash::put('t_obfuscate_string_literal', ! $this->option('no-obfuscate-string-literal'));
+        Hotash::put('t_obfuscate_loop_statement', ! $this->option('no-obfuscate-loop-statement'));
+        Hotash::put('t_obfuscate_if_statement', ! $this->option('no-obfuscate-if-statement'));
+        Hotash::put('t_obfuscate_constant_name', ! $this->option('no-obfuscate-constant-name'));
+        Hotash::put('t_obfuscate_variable_name', ! $this->option('no-obfuscate-variable-name'));
+        Hotash::put('t_obfuscate_function_name', ! $this->option('no-obfuscate-function-name'));
+        Hotash::put('t_obfuscate_class_name', ! $this->option('no-obfuscate-class-name'));
+        Hotash::put('t_obfuscate_konstant_name', ! $this->option('no-obfuscate-konstant-name'));
+        Hotash::put('t_obfuscate_interface_name', ! $this->option('no-obfuscate-interface-name'));
+        Hotash::put('t_obfuscate_trait_name', ! $this->option('no-obfuscate-trait-name'));
+        Hotash::put('t_obfuscate_property_name', ! $this->option('no-obfuscate-property-name'));
+        Hotash::put('t_obfuscate_method_name', ! $this->option('no-obfuscate-method-name'));
+        Hotash::put('t_obfuscate_namespace_name', ! $this->option('no-obfuscate-namespace-name'));
+        Hotash::put('t_obfuscate_label_name', ! $this->option('no-obfuscate-label-name'));
+        Hotash::put('t_strip_indentation', ! $this->option('no-strip-indentation'));
     }
 }

@@ -94,7 +94,7 @@ class Scrambler
                 ->ignore(static::$tReservedClassNames)
                 ->ignore(static::$tReservedVariableNames)
                 ->ignore(Hotash::get('t_pre_defined_classes', []), Hotash::get('t_ignore_pre_defined_classes', 'none') == 'all')
-                ->ignore(Hotash::get('t_ignore_pre_defined_classes', 'none'), is_array(Hotash::get('t_ignore_pre_defined_classes', 'none')))
+                ->ignore(fn () => Hotash::get('t_ignore_pre_defined_classes'), is_array(Hotash::get('t_ignore_pre_defined_classes', 'none')))
                 ->ignore(Hotash::get('t_ignore_classes', []))
                 ->ignore(Hotash::get('t_ignore_interfaces', []))
                 ->ignore(Hotash::get('t_ignore_traits', []))

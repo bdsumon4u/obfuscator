@@ -22,7 +22,7 @@ class HotashPrinter extends PrettyPrinter\Standard
 
     public function pScalar_String(Scalar\String_ $node): string
     {
-        return parent::pScalar_String($node);
+        // return parent::pScalar_String($node);
         if (! strlen($this->obfuscate_string($node->value))) {
             return "''";
         }
@@ -32,7 +32,7 @@ class HotashPrinter extends PrettyPrinter\Standard
 
     protected function pScalar_InterpolatedString(Scalar\InterpolatedString $node): string
     {
-        return parent::pScalar_InterpolatedString($node);
+        // return parent::pScalar_InterpolatedString($node);
         /*
         if ($node->getAttribute('kind') === Scalar\String_::KIND_HEREDOC) {
             $label = $node->getAttribute('docLabel');

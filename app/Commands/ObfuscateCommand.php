@@ -25,25 +25,25 @@ class ObfuscateCommand extends Command
     protected $signature = 'obfuscate
         {project : The project directory to obfuscate}
         {output=output : The output directory to save}
-        {--shuffle-statements : Enable statement shuffling}
+        {--no-shuffle-statements : Disable statement shuffling}
         {--shuffle-min-chunk-size=5 : Minimum chunk size for statement shuffling}
         {--shuffle-chunk-mode=fixed : Chunk mode for statement shuffling (fixed or ratio)}
-        {--shuffle-chunk-ratio=20 : Chunk ratio for statement shuffling (ratio mode only)}
-        {--obfuscate-string-literal : Enable obfuscation of string literals}
-        {--obfuscate-loop-statement : Enable obfuscation of loop statements}
-        {--obfuscate-if-statement : Enable obfuscation of if statements}
-        {--obfuscate-constant-name : Enable obfuscation of constant names}
-        {--obfuscate-variable-name : Enable obfuscation of variable names}
-        {--obfuscate-function-name : Enable obfuscation of function names}
-        {--obfuscate-class-name : Enable obfuscation of class names}
-        {--obfuscate-konstant-name : Enable obfuscation of constant names}
-        {--obfuscate-interface-name : Enable obfuscation of interface names}
-        {--obfuscate-trait-name : Enable obfuscation of trait names}
-        {--obfuscate-property-name : Enable obfuscation of property names}
-        {--obfuscate-method-name : Enable obfuscation of method names}
-        {--obfuscate-namespace-name : Enable obfuscation of namespace names}
-        {--obfuscate-label-name : Enable obfuscation of label names}
-        {--strip-indentation : Enable stripping of indentation}
+        {--shuffle-chunk-ratio=5 : Chunk ratio for statement shuffling (ratio mode only)}
+        {--no-obfuscate-string-literal : Disable obfuscation of string literals}
+        {--no-obfuscate-loop-statement : Disable obfuscation of loop statements}
+        {--no-obfuscate-if-statement : Disable obfuscation of if statements}
+        {--no-obfuscate-constant-name : Disable obfuscation of constant names}
+        {--no-obfuscate-variable-name : Disable obfuscation of variable names}
+        {--no-obfuscate-function-name : Disable obfuscation of function names}
+        {--no-obfuscate-class-name : Disable obfuscation of class names}
+        {--no-obfuscate-konstant-name : Disable obfuscation of class constants}
+        {--no-obfuscate-interface-name : Disable obfuscation of interface names}
+        {--no-obfuscate-trait-name : Disable obfuscation of trait names}
+        {--no-obfuscate-property-name : Disable obfuscation of property names}
+        {--no-obfuscate-method-name : Disable obfuscation of method names}
+        {--no-obfuscate-namespace-name : Disable obfuscation of namespace names}
+        {--no-obfuscate-label-name : Disable obfuscation of label names}
+        {--no-strip-indentation : Disable stripping of indentation}
         {--config : Allow prompts for configuration}';
 
     /**
@@ -58,13 +58,9 @@ class ObfuscateCommand extends Command
         private HotashPrinter $printer,
     ) {
         parent::__construct();
-
         Hotash::processDefinedClassNames();
-
         Hotash::put('t_ignore_pre_defined_classes', 'all');
-
         $this->traverser->addVisitor(new ObfuscationVisitor);
-
         $this->parser = (new ParserFactory)->createForHostVersion();
     }
 
