@@ -3,21 +3,19 @@
 namespace App;
 
 use App\Facades\Hotash;
+use Closure;
+use Exception;
 use Illuminate\Support\Str;
 
 class Scrambler
 {
     const SCRAMBLER_CONTEXT_VERSION = '1.1';
 
-    private static array $scramblers = [];
-
     private $r = null;     // seed and salt for random char generation, modified at each iteration.
 
     private $caseSensitive = true;     // self explanatory
 
     private $scrambleLength = 10;     // current length of scrambled names
-
-    private $scrambleLengthMin = 6;     // min     length of scrambled names
 
     private $scrambleLengthMax = 32;     // max     length of scrambled names
 
@@ -31,12 +29,14 @@ class Scrambler
 
     private $labelCounter = 0;     // internal label counter.
 
-    private $tReservedVariableNames = [
+    private $contextDirectory = null;     // directory where the context is saved.
+
+    private static $tReservedVariableNames = [
         'this', 'GLOBALS', '_SERVER', '_GET', '_POST', '_FILES', '_COOKIE', '_SESSION', '_ENV', '_REQUEST',
         'php_errormsg', 'HTTP_RAW_POST_DATA', 'http_response_header', 'argc', 'argv',
     ];
 
-    private $tReservedFunctionNames = [
+    private static $tReservedFunctionNames = [
         '__halt_compiler', '__autoload', 'abstract', 'and', 'array', 'as', 'bool', 'break', 'callable', 'case', 'catch',
         'class', 'clone', 'const', 'continue', 'declare', 'default', 'die', 'do', 'echo', 'else',
         'elseif', 'empty', 'enddeclare', 'endfor', 'endforeach', 'endif', 'endswitch', 'endwhile',
@@ -47,216 +47,158 @@ class Scrambler
         'apache_request_headers',                        // seems that it is not included in get_defined_functions ..
     ];
 
-    private $tReservedClassNames = [
+    private static $tReservedClassNames = [
         'parent', 'self', 'static',                    // same reserved names for classes, interfaces  and traits...
         'int', 'float', 'bool', 'string', 'true', 'false', 'null', 'void', 'iterable', 'object',  'resource', 'scalar', 'mixed', 'numeric', 'fn',
     ];
 
-    private $tReservedMethodNames = ['__construct', '__destruct', '__call', '__callstatic', '__get', '__set', '__isset', '__unset', '__sleep', '__wakeup', '__tostring', '__invoke', '__set_state', '__clone', '__debuginfo'];
+    private static $tReservedMethodNames = ['__construct', '__destruct', '__call', '__callstatic', '__get', '__set', '__isset', '__unset', '__sleep', '__wakeup', '__tostring', '__invoke', '__set_state', '__clone', '__debuginfo'];
 
-    public static function make($scrambleType, $contextDirectory = null): static
+    public static function make($type): static
     {
-        if (isset(static::$scramblers[$scrambleType])) {
-            return static::$scramblers[$scrambleType];
-        }
+        return match(true) {
+            $type == 'constant' => (new static())
+                ->caseSensitive()
+                ->ignore(static::$tReservedFunctionNames)
+                ->ignore(array_keys(get_defined_constants(false)))
+                ->ignore(Hotash::get('t_ignore_constants', []))
+                ->ignorePrefix(Hotash::get('t_ignore_constant_prefixes', [])),
 
-        return static::$scramblers[$scrambleType] = new static($scrambleType, $contextDirectory);
+            $type == 'konstant' => (new static())
+                ->caseSensitive()
+                ->ignore(static::$tReservedFunctionNames)
+                ->ignore(array_keys(get_defined_constants(false)))
+                ->ignore(Hotash::get('t_pre_defined_konstants', []), Hotash::get('t_ignore_pre_defined_classes', 'none') == 'all')
+                ->ignore(function () {
+                    $constants = Hotash::get('t_pre_defined_konstants_by_class', []);
+
+                    return collect(Hotash::get('t_pre_defined_classes'))
+                        ->flatMap(fn ($class) => $constants[$class] ?? [])
+                        ->toArray();
+                }, is_array(Hotash::get('t_ignore_pre_defined_classes', 'none')))
+                ->ignore(Hotash::get('t_ignore_konstants', []))
+                ->ignorePrefix(Hotash::get('t_ignore_konstant_prefixes', [])),
+
+            $type == 'variable' => (new static())
+                ->caseSensitive()
+                ->ignore(static::$tReservedVariableNames)
+                ->ignore(Hotash::get('t_ignore_variables', []))
+                ->ignorePrefix(Hotash::get('t_ignore_variable_prefixes', [])),
+
+            in_array($type, ['function', 'class', 'interface', 'trait', 'namespace']) => (new static())
+                ->caseSensitive()
+                ->ignore(static::$tReservedFunctionNames)
+                ->ignore(get_defined_functions()['internal'])
+                ->ignore(Hotash::get('t_ignore_functions', []))
+                ->ignorePrefix(Hotash::get('t_ignore_function_prefixes', []))
+                ->ignore(static::$tReservedClassNames)
+                ->ignore(static::$tReservedVariableNames)
+                ->ignore(Hotash::get('t_pre_defined_classes', []), Hotash::get('t_ignore_pre_defined_classes', 'none') == 'all')
+                ->ignore(Hotash::get('t_ignore_pre_defined_classes', 'none'), is_array(Hotash::get('t_ignore_pre_defined_classes', 'none')))
+                ->ignore(Hotash::get('t_ignore_classes', []))
+                ->ignore(Hotash::get('t_ignore_interfaces', []))
+                ->ignore(Hotash::get('t_ignore_traits', []))
+                ->ignore(Hotash::get('t_ignore_namespaces', []))
+                ->ignorePrefix(Hotash::get('t_ignore_class_prefixes', []))
+                ->ignorePrefix(Hotash::get('t_ignore_interface_prefixes', []))
+                ->ignorePrefix(Hotash::get('t_ignore_trait_prefixes', []))
+                ->ignorePrefix(Hotash::get('t_ignore_namespace_prefixes', [])),
+
+            $type == 'property' => (new static())
+                ->caseSensitive()
+                ->ignore(static::$tReservedVariableNames)
+                ->ignore(Hotash::get('t_pre_defined_properties'), Hotash::get('t_ignore_pre_defined_classes', 'none') == 'all')
+                ->ignore(function () {
+                    $properties = Hotash::get('t_pre_defined_properties_by_class', []);
+
+                    return collect(Hotash::get('t_pre_defined_classes'))
+                        ->flatMap(fn ($class) => $properties[$class] ?? [])
+                        ->toArray();
+                }, is_array(Hotash::get('t_ignore_pre_defined_classes', 'none')))
+                ->ignore(Hotash::get('t_ignore_properties', []))
+                ->ignorePrefix(Hotash::get('t_ignore_property_prefixes', [])),
+
+            $type == 'method' => (new static())
+                ->caseSensitive()
+                ->ignore(Hotash::get('parser_mode') == 'ONLY_PHP7' ? [] : static::$tReservedFunctionNames)
+                ->ignore(static::$tReservedMethodNames)
+                ->ignore(get_defined_functions()['internal'])
+                ->ignore(Hotash::get('t_pre_defined_methods'), Hotash::get('t_ignore_pre_defined_classes', 'none') == 'all')
+                ->ignore(function () {
+                    $methods = Hotash::get('t_pre_defined_methods_by_class', []);
+
+                    return collect(Hotash::get('t_pre_defined_classes'))
+                        ->flatMap(fn ($class) => $methods[$class] ?? [])
+                        ->toArray();
+                }, is_array(Hotash::get('t_ignore_pre_defined_classes', 'none')))
+                ->ignore(Hotash::get('t_ignore_methods', []))
+                ->ignorePrefix(Hotash::get('t_ignore_method_prefixes', [])),
+
+            $type == 'label' => (new static())
+                ->caseSensitive()
+                ->ignore(static::$tReservedFunctionNames)
+                ->ignore(Hotash::get('t_ignore_labels', []))
+                ->ignorePrefix(Hotash::get('t_ignore_label_prefixes', [])),
+            default => throw new Exception('Undefined scrambler type'),
+        };
     }
 
-    public function __construct(
-        private $scrambleType,     // type on which scrambling is done (i.e. variable, function, etc.)
-        private $contextDirectory,
-    ) {
+    public function __construct() {
         $this->r = md5(microtime(true));     // random seed
 
-        switch ($scrambleType) {
-            case 'constant':
-                $this->caseSensitive = true;
-                $this->tIgnore = array_merge($this->tIgnore, $this->tReservedFunctionNames, array_keys(get_defined_constants(false)));
-                if ($ignore = Hotash::get('t_ignore_constants')) {
-                    $this->tIgnore = array_merge($this->tIgnore, $ignore);
-                }
-                if ($prefix = Hotash::get('t_ignore_constants_prefix')) {
-                    $this->tIgnorePrefix = $prefix;
-                }
-                break;
-            case 'class_constant':
-                $this->caseSensitive = true;
-                $this->tIgnore = array_merge($this->tIgnore, $this->tReservedFunctionNames, array_keys(get_defined_constants(false)));
-                if (($ignore = Hotash::get('t_ignore_pre_defined_classes')) != 'none') {
-                    if ($ignore == 'all') {
-                        $this->tIgnore = array_merge($this->tIgnore, Hotash::get('t_pre_defined_class_constants'));
-                    }
-                    if (is_array($ignore)) {
-                        $t_pre_defined_class_constants_by_class = Hotash::get('t_pre_defined_class_constants_by_class');
-                        foreach ($ignore as $class_name) {
-                            $this->tIgnore = array_merge($this->tIgnore, $t_pre_defined_class_constants_by_class[$class_name] ?? []);
-                        }
-                    }
-                }
-                if ($ignore = Hotash::get('t_ignore_class_constants')) {
-                    $this->tIgnore = array_merge($this->tIgnore, $ignore);
-                }
-                if ($prefix = Hotash::get('t_ignore_class_constants_prefix')) {
-                    $this->tIgnorePrefix = $prefix;
-                }
-                break;
-            case 'variable':
-                $this->caseSensitive = true;
-                $this->tIgnore = $this->tReservedVariableNames;
-                if ($ignore = Hotash::get('t_ignore_variables')) {
-                    $this->tIgnore = array_merge($this->tIgnore, $ignore);
-                }
-                if ($prefix = Hotash::get('t_ignore_variables_prefix')) {
-                    $this->tIgnorePrefix = $prefix;
-                }
-                break;
-                /*
-            //  case 'function':
-            //     $this->case_sensitive       = false;
-            //     $this->t_ignore             = array_flip($this->t_reserved_function_names);
-            //     $t                          = get_defined_functions();                  $t = array_map('strtolower',$t['internal']);    $t = array_flip($t);
-            //     $this->t_ignore             = array_merge($this->t_ignore,$t);
-            //     if (isset($conf->t_ignore_functions))
-            //     {
-            //         $t                      = $conf->t_ignore_functions;                $t = array_map('strtolower',$t);                $t = array_flip($t);
-            //         $this->t_ignore         = array_merge($this->t_ignore,$t);
-            //     }
-            //     if (isset($conf->t_ignore_functions_prefix))
-            //     {
-            //         $t                      = $conf->t_ignore_functions_prefix;         $t = array_map('strtolower',$t);                $t = array_flip($t);
-            //         $this->t_ignore_prefix  = $t;
-            //     }
-            //     break;
-            //     */
-            case 'property':
-                $this->caseSensitive = true;
-                $this->tIgnore = $this->tReservedVariableNames;
-                if (($ignore = Hotash::get('t_ignore_pre_defined_classes')) != 'none') {
-                    if ($ignore == 'all') {
-                        $this->tIgnore = array_merge($this->tIgnore, Hotash::get('t_pre_defined_class_properties'));
-                    }
-                    if (is_array($ignore)) {
-                        $t_pre_defined_class_properties_by_class = Hotash::get('t_pre_defined_class_properties_by_class');
-                        foreach ($ignore as $class_name) {
-                            $this->tIgnore = array_merge($this->tIgnore, $t_pre_defined_class_properties_by_class[$class_name] ?? []);
-                        }
-                    }
-                }
-                if ($ignore = Hotash::get('t_ignore_properties')) {
-                    $this->tIgnore = array_merge($this->tIgnore, $ignore);
-                }
-                if ($prefix = Hotash::get('t_ignore_properties_prefix')) {
-                    $this->tIgnorePrefix = $prefix;
-                }
-                break;
-            case 'function_or_class':           // same instance is used for scrambling classes, interfaces, and traits.  and namespaces... and functions ...for aliasing
-                $this->caseSensitive = false;
-                $this->tIgnore = array_merge($this->tIgnore, $this->tReservedFunctionNames, $this->tReservedClassNames, $this->tReservedVariableNames, get_defined_functions()['internal']);
-                if ($ignore = Hotash::get('t_ignore_functions')) {
-                    $this->tIgnore = array_merge($this->tIgnore, $ignore);
-                }
-                if ($prefix = Hotash::get('t_ignore_functions_prefix')) {
-                    $this->tIgnorePrefix = $prefix;
-                }
+        // if (file_exists($file = "{$this->contextDirectory}/obfuscator/context/{$this->scrambleType}")) {
+        //     $t = unserialize(file_get_contents($file));
+        //     if ($t[0] !== self::SCRAMBLER_CONTEXT_VERSION) {
+        //         fprintf(STDERR, "Error:\tContext format has changed! run with --clean option!".PHP_EOL);
+        //         $this->contextDirectory = null;        // do not overwrite incoherent values when exiting
+        //         exit(1);
+        //     }
+        //     $this->tScramble = $t[1];
+        //     $this->tRscramble = $t[2];
+        //     $this->scrambleLength = $t[3];
+        //     $this->labelCounter = $t[4];
+        // }
+    }
 
-                if (($ignore = Hotash::get('t_ignore_pre_defined_classes')) != 'none') {
-                    if ($ignore == 'all') {
-                        $this->tIgnore = array_merge($this->tIgnore, $t = Hotash::get('t_pre_defined_classes'));
-                    }
-                    if (is_array($ignore)) {
-                        foreach ($ignore as $class_name) {
-                            if (isset($t[$class_name])) {
-                                $this->tIgnore[] = $t;
-                            }
-                        }
-                    }
-                }
-                $this->tIgnore = array_merge(
-                    $this->tIgnore,
-                    Hotash::get('t_ignore_classes', []),
-                    Hotash::get('t_ignore_interfaces', []),
-                    Hotash::get('t_ignore_traits', []),
-                    Hotash::get('t_ignore_namespaces', []),
-                );
+    public function caseSensitive(bool $caseSensitive = true): static
+    {
+        $this->caseSensitive = $caseSensitive;
 
-                $this->tIgnorePrefix = array_merge(
-                    $this->tIgnorePrefix,
-                    Hotash::get('t_ignore_classes_prefix', []),
-                    Hotash::get('t_ignore_interfaces_prefix', []),
-                    Hotash::get('t_ignore_traits_prefix', []),
-                    Hotash::get('t_ignore_namespaces_prefix', []),
-                );
-                break;
-            case 'method':
-                $this->caseSensitive = false;
-                if (Hotash::get('parser_mode') == 'ONLY_PHP7') {
-                    $this->tIgnore = [];
-                }      // in php7 method names can be keywords
-                else {
-                    $this->tIgnore = $this->tReservedFunctionNames;
-                }
+        return $this;
+    }
 
-                $this->tIgnore = array_merge($this->tIgnore, $this->tReservedMethodNames, get_defined_functions());
-
-                if (($ignore = Hotash::get('t_ignore_pre_defined_classes')) != 'none') {
-                    if ($ignore == 'all') {
-                        $this->tIgnore = array_merge($this->tIgnore, Hotash::get('t_pre_defined_class_methods'));
-                    }
-                    if (is_array($ignore)) {
-                        $t_pre_defined_class_methods_by_class = Hotash::get('t_pre_defined_class_methods_by_class');
-                        foreach ($ignore as $class_name) {
-                            $this->tIgnore = array_merge($this->tIgnore, $t_pre_defined_class_methods_by_class[$class_name]);
-                        }
-                    }
-                }
-                if ($ignore = Hotash::get('t_ignore_methods')) {
-                    $this->tIgnore = array_merge($this->tIgnore, $ignore);
-                }
-                if ($prefix = Hotash::get('t_ignore_methods_prefix')) {
-                    $this->tIgnorePrefix = $prefix;
-                }
-                break;
-            case 'label':
-                $this->caseSensitive = true;
-                $this->tIgnore = $this->tReservedFunctionNames;
-                if ($ignore = Hotash::get('t_ignore_labels')) {
-                    $this->tIgnore = array_merge($this->tIgnore, $ignore);
-                }
-                if ($prefix = Hotash::get('t_ignore_labels_prefix')) {
-                    $this->tIgnorePrefix = $prefix;
-                }
-                break;
+    public function ignore(array|Closure $value, bool|Closure $condition = true): static
+    {
+        if (value($condition)) {
+            $this->tIgnore = array_merge($this->tIgnore, value($value));
         }
 
-        if (file_exists($file = "{$this->contextDirectory}/obfuscator/context/{$this->scrambleType}")) {
-            $t = unserialize(file_get_contents($file));
-            if ($t[0] !== self::SCRAMBLER_CONTEXT_VERSION) {
-                fprintf(STDERR, "Error:\tContext format has changed! run with --clean option!".PHP_EOL);
-                $this->contextDirectory = null;        // do not overwrite incoherent values when exiting
-                exit(1);
-            }
-            $this->tScramble = $t[1];
-            $this->tRscramble = $t[2];
-            $this->scrambleLength = $t[3];
-            $this->labelCounter = $t[4];
+        return $this;
+    }
+
+    public function ignorePrefix(array|Closure $value, bool|Closure $condition = true): static
+    {
+        if (value($condition)) {
+            $this->tIgnorePrefix = array_merge($this->tIgnorePrefix, value($value));
         }
+
+        return $this;
     }
 
     public function __destruct()
     {
-        if (! Hotash::get('silent')) {
-            fprintf(STDERR, "Info:\t[%-17s] scrambled \t: %8d%s", $this->scrambleType, count($this->tScramble), PHP_EOL);
-        }
-        if (isset($this->contextDirectory)) {                            // the destructor will save the current context
-            $t = [];
-            $t[0] = self::SCRAMBLER_CONTEXT_VERSION;
-            $t[1] = $this->tScramble;
-            $t[2] = $this->tRscramble;
-            $t[3] = $this->scrambleLength;
-            $t[4] = $this->labelCounter;
-            file_put_contents("{$this->contextDirectory}/obfuscator/context/{$this->scrambleType}", serialize($t));
-        }
+        // if (! Hotash::get('silent')) {
+        //     fprintf(STDERR, "Info:\t[%-17s] scrambled \t: %8d%s", $this->scrambleType, count($this->tScramble), PHP_EOL);
+        // }
+        // if (isset($this->contextDirectory)) {                            // the destructor will save the current context
+        //     $t = [];
+        //     $t[0] = self::SCRAMBLER_CONTEXT_VERSION;
+        //     $t[1] = $this->tScramble;
+        //     $t[2] = $this->tRscramble;
+        //     $t[3] = $this->scrambleLength;
+        //     $t[4] = $this->labelCounter;
+        //     file_put_contents("{$this->contextDirectory}/obfuscator/context/{$this->scrambleType}", serialize($t));
+        // }
     }
 
     private function str_scramble($s)                                   // scramble the string according parameters
@@ -294,6 +236,10 @@ class Scrambler
             if (substr($r, 0, strlen($key)) === $key) {
                 return $s;
             }
+        }
+
+        if (isset($this->tScramble[$r])) {
+            return $this->tScramble[$r];
         }
 
         if (! isset($this->tScramble[$r])) {      // if not already scrambled:

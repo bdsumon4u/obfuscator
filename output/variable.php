@@ -2,22 +2,33 @@
 
 namespace App\Functions;
 
-class xa59bde35c {}
-if (! function_exists("\x78\x38\141\x62\x64\x38\x37\x64\x63\141")) {
-    function x8abd87dca(xa59bde35c $var): xa59bde35c
+use Exception;
+$xe0eb3b7d3 = 'aslfj';
+const ABC = 'abc';
+define('DEF', 'def');
+try {
+} catch (Exception $x337ae55ca) {
+    dump($x337ae55ca);
+}
+function self(): bool
+{
+    if (defined('DEF') && defined('ABC')) {
+        return ABC === 'abc' && DEF === 'def';
+    }
+    return __FUNCTION__ === 'self';
+}
+class Demo
+{
+    const XYZ = 'xyz';
+    private bool $var;
+    public function __construct()
     {
-        return $var;
+        if (static::XYZ === 'xyz' && ABC === 'abc' && DEF === 'def') {
+            $this->var = ABC === 'abc' && DEF === 'def';
+        }
+        echo self::XYZ;
+        dump(Demo::XYZ);
     }
 }
-$x14c682c36 = function ($var) {
-    return $var;
-};
-try {
-    $var = "\x48\145\154\154\x6f";
-    $x9066aa138 = "\x76\141\162";
-    echo ${$x9066aa138};
-    $x14c682c36($var);
-} catch (xa59bde35c $x0503d8c6c) {
-    echo $x0503d8c6c->getMessage();
-}
-x8abd87dca("\170\171\172");
+new Demo();
+echo Demo::XYZ;

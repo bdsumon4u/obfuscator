@@ -2,31 +2,43 @@
 
 namespace App\Functions;
 
-function self() {
+use Exception;
 
+$var = 'aslfj';
+
+const ABC = 'abc';
+
+define('DEF', 'def');
+
+try {
+
+} catch (Exception $ex) {
+    dump($ex);
 }
 
-class throw {}
+function self(): bool {
+    if (defined('DEF') && defined('ABC')) {
+        return ABC === 'abc' && DEF === 'def';
+    }
 
-if (! function_exists('abc')) {
-    function abc(REt $var): REt
+    return __FUNCTION__ === 'self';
+}
+
+class Demo
+{
+    const XYZ = 'xyz';
+
+    private bool $var;
+
+    public function __construct()
     {
-        return $var;
+        if (static::XYZ === 'xyz' && ABC === 'abc' && DEF === 'def')
+        $this->var = ABC === 'abc' && DEF === 'def';
+        echo self::XYZ;
+        dump(Demo::XYZ);
     }
 }
 
-$func = function ($var) {
-    return $var;
-};
+new Demo();
 
-try {
-    $var = 'Hello';
-    $vvar = 'var';
-    echo $$vvar;
-
-    $func($var);
-} catch (REt $e) {
-    echo $e->getMessage();
-}
-
-abc('xyz');
+echo Demo::XYZ;
