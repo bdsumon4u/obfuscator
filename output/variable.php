@@ -2,27 +2,28 @@
 
 echo '80' / 10;
 foreach (range(1, 10) as $i) {
-    goto xa1bc394de;
-    xa1bc394de:
-    echo $i . PHP_EOL;
+    goto xa05568eb2;
+    xa05568eb2:
     echo 'I';
     echo 'Love';
     echo 'Bangladesh';
     echo 'Very';
     echo 'Much';
-    echo 'And';
-    echo 'I';
-    goto xdab04b553;
-    xdab04b553:
-    echo 'Am';
-    echo 'Proud';
-    echo 'To';
+    goto x1035b2058;
+    xac5497b04:
     echo 'Be';
     echo 'A';
     echo 'Bangladeshi';
     echo PHP_EOL;
-    x18db9078e:
-    goto xcb7423559;
-    xcb7423559:
+    xe507ed177:
+    goto x5701448ca;
+    x1035b2058:
+    echo 'And';
+    echo 'I';
+    echo 'Am';
+    echo 'Proud';
+    echo 'To';
+    goto xac5497b04;
+    x5701448ca:
 }
-x48c097ee9:
+xd98d55229:

@@ -683,11 +683,8 @@ class ObfuscationVisitor extends NodeVisitorAbstract
         if (Hotash::get('t_shuffle_statements')) {
             if ($stmts = $node->stmts) {
                 $chunk_size = $this->shuffle_get_chunk_size($stmts);
-                if ($chunk_size <= 0) {
-                    return false;
-                } // should never occur!
 
-                if (count($stmts) >= (2 * $chunk_size)) {
+                if (count($stmts) > $chunk_size + Hotash::get('t_shuffle_statements_min_chunk_size')) {
                     $node->stmts = $this->shuffle_statements($stmts);
 
                     return true;
@@ -698,48 +695,26 @@ class ObfuscationVisitor extends NodeVisitorAbstract
         return false;
     }
 
-    public function shuffle_get_chunk_size(&$stmts)
+    private function shuffle_get_chunk_size(&$stmts)
     {
-        $n = count($stmts);
-        switch (Hotash::get('t_shuffle_statements_chunk_mode')) {
-            case 'ratio':
-                $chunk_size = $n / Hotash::get('t_shuffle_statements_chunk_ratio');
-                if ($chunk_size < Hotash::get('t_shuffle_statements_min_chunk_size')) {
-                    $chunk_size = Hotash::get('t_shuffle_statements_min_chunk_size');
-                }
-                break;
-            case 'fixed':
-                $chunk_size = Hotash::get('t_shuffle_statements_min_chunk_size');
-                break;
-            default:
-                $chunk_size = 1;       // should never occur!
+        $chunk_size = Hotash::get('t_shuffle_statements_min_chunk_size');
+        if (Hotash::get('t_shuffle_statements_chunk_mode') === 'ratio') {
+            $chunk_size = max($chunk_size, count($stmts) / Hotash::get('t_shuffle_statements_chunk_ratio'));
         }
 
         return round($chunk_size);
     }
 
-    public function shuffle_statements($stmts)
+    private function shuffle_statements($stmts)
     {
-        if (! Hotash::get('t_shuffle_statements')) {
-            return $stmts;
-        }
-
         $chunk_size = $this->shuffle_get_chunk_size($stmts);
-        if ($chunk_size <= 0) {
-            return $stmts;
-        } // should never occur!
-
-        $n = count($stmts);
-        if ($n < (2 * $chunk_size)) {
-            return $stmts;
-        }
 
         $scrambler = Hotash::scrambler('label');
         $label_name_prev = $scrambler->generateLabelName();
         $first_goto = new Node\Stmt\Goto_($label_name_prev);
         $t = [];
         $t_chunk = [];
-        for ($i = 0; $i < $n; $i++) {
+        for ($i = 0; $i < count($stmts); $i++) {
             $t_chunk[] = $stmts[$i];
             if (count($t_chunk) >= $chunk_size) {
                 $label = [new Node\Stmt\Label($label_name_prev)];
@@ -760,14 +735,13 @@ class ObfuscationVisitor extends NodeVisitorAbstract
         }
 
         shuffle($t);
-        $stmts = [];
-        $stmts[] = $first_goto;
+        $stmts = [$first_goto];
         foreach ($t as $stmt) {
             foreach ($stmt as $inst) {
                 $stmts[] = $inst;
             }
         }
-        $stmts[] = new Node\Stmt\Label($label_name);;
+        $stmts[] = new Node\Stmt\Label($label_name);
 
         return $stmts;
     }
