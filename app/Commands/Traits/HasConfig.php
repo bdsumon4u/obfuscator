@@ -147,9 +147,9 @@ trait HasConfig
         if ($this->option('shuffle-statements')) {
             Hotash::put('t_shuffle_statements', true);
 
-            Hotash::put('shuffle_stmts_min_chunk_size', $this->option('shuffle-min-chunk-size') ?? 1);
-            Hotash::put('shuffle_stmts_chunk_mode', $this->option('shuffle-chunk-mode') ?? 'fixed');
-            Hotash::put('shuffle_stmts_chunk_ratio', $this->option('shuffle-chunk-ratio') ?? 5);
+            Hotash::put('t_shuffle_statements_min_chunk_size', $this->option('shuffle-min-chunk-size'));
+            Hotash::put('t_shuffle_statements_chunk_mode', $this->option('shuffle-chunk-mode'));
+            Hotash::put('t_shuffle_statements_chunk_ratio', $this->option('shuffle-chunk-ratio'));
         }
 
         if ($this->option('obfuscate-string-literal')) {

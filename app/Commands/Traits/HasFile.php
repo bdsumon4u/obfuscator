@@ -42,7 +42,7 @@ trait HasFile
 
         $outputFile = str_replace($projectDir, $outputDir, $file);
 
-        if (!file_exists(dirname($outputFile))) {
+        if (! file_exists(dirname($outputFile))) {
             mkdir(dirname($outputFile), 0755, true);
         }
 

@@ -80,14 +80,13 @@ class ObfuscationVisitor extends NodeVisitorAbstract
         // Obfuscate Constant Names
         if (Hotash::get('t_obfuscate_constant_name')) {
             $scrambler = Hotash::scrambler('constant');
-            if ($node instanceof Node\Const_ && !Hotash::get('is_in_class_const_definition')) {
+            if ($node instanceof Node\Const_ && ! Hotash::get('is_in_class_const_definition')) {
                 $node->name = new Node\Identifier(
                     $scrambler->scramble($node->name),
                     $node->name->getAttributes(),
                 );
             }
-            if ($node instanceof Node\Expr\FuncCall)
-            {
+            if ($node instanceof Node\Expr\FuncCall) {
                 if ($node->name instanceof Node\Name) {
                     if (in_array($function = $node->name->getLast(), ['define', 'defined'])) {
                         $arg = current($node->getArgs())->value;
@@ -460,8 +459,7 @@ class ObfuscationVisitor extends NodeVisitorAbstract
         }
 
         // Obfuscate Label Names
-        if (Hotash::get('t_obfuscate_label_name'))                    // label: goto label;   -
-        {
+        if (Hotash::get('t_obfuscate_label_name')) {                    // label: goto label;   -
             $scrambler = Hotash::scrambler('label');
             if (($node instanceof Node\Stmt\Label) || ($node instanceof Node\Stmt\Goto_)) {
                 $node->name = new Node\Identifier(
@@ -471,6 +469,306 @@ class ObfuscationVisitor extends NodeVisitorAbstract
             }
         }
 
+        // Obfuscate If Statements
+        if (Hotash::get('t_obfuscate_if_statement')) {                  // if else elseif   are replaced by goto ...
+            $scrambler = Hotash::scrambler('label');
+            $condition = $node->cond;
+            $stmts = $node->stmts;
+
+            if ($elseifs = $node->elseifs) {       // elseif mode
+                $label_endif_name = $scrambler->generateLabelName();
+                $label_endif = [new Node\Stmt\Label($label_endif_name)];
+                $goto_endif = [new Node\Stmt\Goto_($label_endif_name)];
+
+                $new_nodes_1 = [];
+                $new_nodes_2 = [];
+                $label_if_name = $scrambler->generateLabelName();
+                $label_if = [new Node\Stmt\Label($label_if_name)];
+                $goto_if = [new Node\Stmt\Goto_($label_if_name)];
+                $if = new Node\Stmt\If_($condition);
+                $if->stmts = $goto_if;
+                $new_nodes_1 = array_merge($new_nodes_1, [$if]);
+                $new_nodes_2 = array_merge($new_nodes_2, $label_if, $stmts, $goto_endif);
+
+                for ($i = 0; $i < count($elseifs); $i++) {
+                    $condition = $elseifs[$i]->cond;
+                    $stmts = $elseifs[$i]->stmts;
+                    $label_if_name = $scrambler->generateLabelName();
+                    $label_if = [new Node\Stmt\Label($label_if_name)];
+                    $goto_if = [new Node\Stmt\Goto_($label_if_name)];
+                    $if = new Node\Stmt\If_($condition);
+                    $if->stmts = $goto_if;
+                    $new_nodes_1 = array_merge($new_nodes_1, [$if]);
+                    $new_nodes_2 = array_merge($new_nodes_2, $label_if, $stmts);
+                    if ($i < count($elseifs) - 1) {
+                        $new_nodes_2 = array_merge($new_nodes_2, $goto_endif);
+                    }
+                }
+                if (isset($else)) {
+                    $new_nodes_1 = array_merge($new_nodes_1, $else);
+                }
+                $new_nodes_1 = array_merge($new_nodes_1, $goto_endif);
+                $new_nodes_2 = array_merge($new_nodes_2, $label_endif);
+
+                return array_merge($new_nodes_1, $new_nodes_2);
+            } elseif ($stmts = $node->else?->stmts) {       // if else mode
+                $label_then_name = $scrambler->generateLabelName();
+                $label_then = [new Node\Stmt\Label($label_then_name)];
+                $goto_then = [new Node\Stmt\Goto_($label_then_name)];
+                $label_endif_name = $scrambler->generateLabelName();
+                $label_endif = [new Node\Stmt\Label($label_endif_name)];
+                $goto_endif = [new Node\Stmt\Goto_($label_endif_name)];
+                $node->stmts = $goto_then;
+                $node->else = null;
+
+                return array_merge([$node], $stmts, $goto_endif, $label_then, $stmts, $label_endif);
+            } else { // no else statement found
+                if ($condition instanceof Node\Expr\BooleanNot) {     // avoid !! in generated code
+                    $new_condition = $condition->expr;
+                } else {
+                    $new_condition = new Node\Expr\BooleanNot($condition);
+                }
+                $label_endif_name = $scrambler->generateLabelName();
+                $label_endif = [new Node\Stmt\Label($label_endif_name)];
+                $goto_endif = [new Node\Stmt\Goto_($label_endif_name)];
+                $node->cond = $new_condition;
+                $node->stmts = $goto_endif;
+
+                return array_merge([$node], $stmts, $label_endif);
+            }
+        }
+
+        // Obfuscate Loop Statements
+        if (Hotash::get('t_obfuscate_loop_statement')) {                  // for while do while   are replaced by goto ...
+            $scrambler = Hotash::scrambler('label');
+            if ($node instanceof Node\Stmt\For_) {
+                [$label_loop_break_name, $label_loop_continue_name] = Hotash::unstack('t_loop_stack');
+
+                $label_loop_name = $scrambler->generateLabelName();
+                $label_loop = [new Node\Stmt\Label($label_loop_name)];
+                $goto_loop = [new Node\Stmt\Goto_($label_loop_name)];
+                $label_break = [new Node\Stmt\Label($label_loop_break_name)];
+                $goto_break = [new Node\Stmt\Goto_($label_loop_break_name)];
+                $label_continue = [new Node\Stmt\Label($label_loop_continue_name)];
+                $goto_continue = [new Node\Stmt\Goto_($label_loop_continue_name)];
+
+                $new_node = array_map(function ($init) {
+                    return new Node\Stmt\Expression($init);
+                }, $node->init);
+
+                $new_node = array_merge($new_node, $label_loop);
+                if ($cond = end($node->cond)) {
+                    $cond = $cond instanceof Node\Expr\BooleanNot ? $cond->expr : new Node\Expr\BooleanNot($cond);
+                    $new_node[] = new Node\Stmt\If_($cond, ['stmts' => $goto_break]);
+                }
+                $new_node = array_merge($new_node, $node->stmts);
+                $new_node = array_merge($new_node, $label_continue);
+                $new_node = array_merge($new_node, array_map(function ($loop) {
+                    return new Node\Stmt\Expression($loop);
+                }, $node->loop));
+                $new_node = array_merge($new_node, $goto_loop);
+                $new_node = array_merge($new_node, $label_break);
+
+                return $new_node;
+            }
+
+            if ($node instanceof Node\Stmt\Foreach_) {
+                [$label_loop_break_name, $label_loop_continue_name] = Hotash::unstack('t_loop_stack');
+
+                $label_break = [new Node\Stmt\Label($label_loop_break_name)];
+                $node->stmts[] = new Node\Stmt\Label($label_loop_continue_name);
+                $this->shuffle_stmts($node);
+
+                return array_merge([$node], $label_break);
+            }
+
+            if ($node instanceof Node\Stmt\Switch_) {
+                [$label_loop_break_name, $label_loop_continue_name] = Hotash::unstack('t_loop_stack');
+
+                $label_break = [new Node\Stmt\Label($label_loop_break_name)];
+                $label_continue = [new Node\Stmt\Label($label_loop_continue_name)];
+
+                return array_merge([$node], $label_continue, $label_break);
+            }
+
+            if ($node instanceof Node\Stmt\While_) {
+                [$label_loop_break_name, $label_loop_continue_name] = Hotash::unstack('t_loop_stack');
+
+                $condition = $node->cond;
+                $stmts = $node->stmts;
+                $label_break = [new Node\Stmt\Label($label_loop_break_name)];
+                $goto_break = [new Node\Stmt\Goto_($label_loop_break_name)];
+                $label_continue = [new Node\Stmt\Label($label_loop_continue_name)];
+                $goto_continue = [new Node\Stmt\Goto_($label_loop_continue_name)];
+                if ($condition instanceof Node\Expr\BooleanNot) {     // avoid !! in generated code
+                    $new_condition = $condition->expr;
+                } else {
+                    $new_condition = new Node\Expr\BooleanNot($condition);
+                }
+                $if = new Node\Stmt\If_($new_condition);
+                $if->stmts = $goto_break;
+
+                return array_merge($label_continue, [$if], $stmts, $goto_continue, $label_break);
+            }
+
+            if ($node instanceof Node\Stmt\Do_) {
+                [$label_loop_break_name, $label_loop_continue_name] = Hotash::unstack('t_loop_stack');
+
+                $condition = $node->cond;
+                $stmts = $node->stmts;
+                $label_break = [new Node\Stmt\Label($label_loop_break_name)];
+                $label_continue = [new Node\Stmt\Label($label_loop_continue_name)];
+                $goto_continue = [new Node\Stmt\Goto_($label_loop_continue_name)];
+                $if = new Node\Stmt\If_($condition);
+                $if->stmts = $goto_continue;
+
+                return array_merge($label_continue, $stmts, [$if], $label_break);
+            }
+
+            if ($node instanceof Node\Stmt\Break_) {
+                $n = $node->num instanceof Node\Scalar\Int_ ? $node->num->value : 1;
+
+                if (($i = count(Hotash::get('t_loop_stack')) - $n) < 0) {
+                    throw new Exception('Error: break statement outside loop found!;'.PHP_EOL);
+                }
+
+                [$label_loop_break_name, $label_loop_continue_name] = Hotash::get('t_loop_stack')[$i];
+                $node = new Node\Stmt\Goto_($label_loop_break_name);
+            }
+            if ($node instanceof Node\Stmt\Continue_) {
+                $n = $node->num instanceof Node\Scalar\Int_ ? $node->num->value : 1;
+                if (($i = count(Hotash::get('t_loop_stack')) - $n) < 0) {
+                    throw new Exception('Error: continue statement outside loop found!;'.PHP_EOL);
+                }
+                [$label_loop_break_name, $label_loop_continue_name] = Hotash::get('t_loop_stack')[$i];
+                $node = new Node\Stmt\Goto_($label_loop_continue_name);
+            }
+        }
+
+        // Shuffle Statements
+        if (Hotash::get('t_shuffle_statements')) {
+            if (($node instanceof Node\Stmt\Function_)
+                || ($node instanceof Node\Expr\Closure)
+                || ($node instanceof Node\Stmt\ClassMethod)
+                || ($node instanceof Node\Stmt\Foreach_)     // occurs when $conf->obfuscate_loop_statement is set to false
+                || ($node instanceof Node\Stmt\If_)          // occurs when $conf->obfuscate_loop_statement is set to false
+                || ($node instanceof Node\Stmt\TryCatch)
+                || ($node instanceof Node\Stmt\Catch_)
+                || ($node instanceof Node\Stmt\Case_)
+                || ($node instanceof Node\Stmt\Namespace_)
+            ) {
+                $this->shuffle_stmts($node);
+            }
+
+            if (($node instanceof Node\Stmt\If_)) {           // occurs when $conf->obfuscate_if_statement is set to false
+                if ($node->else) {                          // else mode
+                    $this->shuffle_stmts($node->else);
+                }
+
+                $node->elseifs = array_map(function ($elseif) {
+                    $this->shuffle_stmts($elseif);
+
+                    return $elseif;
+                }, $node->elseifs);
+            }
+        }
+
+        Hotash::unstack('t_node_stack');
+
         return $node;
+    }
+
+    private function shuffle_stmts(Node &$node)
+    {
+        if (Hotash::get('t_shuffle_statements')) {
+            if ($stmts = $node->stmts) {
+                $chunk_size = $this->shuffle_get_chunk_size($stmts);
+                if ($chunk_size <= 0) {
+                    return false;
+                } // should never occur!
+
+                if (count($stmts) >= (2 * $chunk_size)) {
+                    $node->stmts = $this->shuffle_statements($stmts);
+
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public function shuffle_get_chunk_size(&$stmts)
+    {
+        $n = count($stmts);
+        switch (Hotash::get('t_shuffle_statements_chunk_mode')) {
+            case 'ratio':
+                $chunk_size = $n / Hotash::get('t_shuffle_statements_chunk_ratio');
+                if ($chunk_size < Hotash::get('t_shuffle_statements_min_chunk_size')) {
+                    $chunk_size = Hotash::get('t_shuffle_statements_min_chunk_size');
+                }
+                break;
+            case 'fixed':
+                $chunk_size = Hotash::get('t_shuffle_statements_min_chunk_size');
+                break;
+            default:
+                $chunk_size = 1;       // should never occur!
+        }
+
+        return round($chunk_size);
+    }
+
+    public function shuffle_statements($stmts)
+    {
+        if (! Hotash::get('t_shuffle_statements')) {
+            return $stmts;
+        }
+
+        $chunk_size = $this->shuffle_get_chunk_size($stmts);
+        if ($chunk_size <= 0) {
+            return $stmts;
+        } // should never occur!
+
+        $n = count($stmts);
+        if ($n < (2 * $chunk_size)) {
+            return $stmts;
+        }
+
+        $scrambler = Hotash::scrambler('label');
+        $label_name_prev = $scrambler->generateLabelName();
+        $first_goto = new Node\Stmt\Goto_($label_name_prev);
+        $t = [];
+        $t_chunk = [];
+        for ($i = 0; $i < $n; $i++) {
+            $t_chunk[] = $stmts[$i];
+            if (count($t_chunk) >= $chunk_size) {
+                $label = [new Node\Stmt\Label($label_name_prev)];
+                $label_name = $scrambler->generateLabelName();
+                $goto = [new Node\Stmt\Goto_($label_name)];
+                $t[] = array_merge($label, $t_chunk, $goto);
+                $label_name_prev = $label_name;
+                $t_chunk = [];
+            }
+        }
+        if (count($t_chunk) > 0) {
+            $label = [new Node\Stmt\Label($label_name_prev)];
+            $label_name = $scrambler->generateLabelName();
+            $goto = [new Node\Stmt\Goto_($label_name)];
+            $t[] = array_merge($label, $t_chunk, $goto);
+            $label_name_prev = $label_name;
+            $t_chunk = [];
+        }
+
+        shuffle($t);
+        $stmts = [];
+        $stmts[] = $first_goto;
+        foreach ($t as $stmt) {
+            foreach ($stmt as $inst) {
+                $stmts[] = $inst;
+            }
+        }
+        $stmts[] = new Node\Stmt\Label($label_name);;
+
+        return $stmts;
     }
 }

@@ -2,11 +2,12 @@
 
 namespace App\Commands;
 
-use App\Commands\Traits\{HasConfig, HasFile, HasParser};
+use App\Commands\Traits\HasConfig;
+use App\Commands\Traits\HasFile;
+use App\Commands\Traits\HasParser;
 use App\Facades\Hotash;
 use App\HotashPrinter;
 use App\ObfuscationVisitor;
-use Generator;
 use Illuminate\Console\Scheduling\Schedule;
 use LaravelZero\Framework\Commands\Command;
 use PhpParser\NodeTraverser;
@@ -25,9 +26,9 @@ class ObfuscateCommand extends Command
         {project : The project directory to obfuscate}
         {output=output : The output directory to save}
         {--shuffle-statements : Enable statement shuffling}
-        {--shuffle-min-chunk-size=1 : Minimum chunk size for statement shuffling}
+        {--shuffle-min-chunk-size=5 : Minimum chunk size for statement shuffling}
         {--shuffle-chunk-mode=fixed : Chunk mode for statement shuffling (fixed or ratio)}
-        {--shuffle-chunk-ratio=5 : Chunk ratio for statement shuffling (percentage)}
+        {--shuffle-chunk-ratio=20 : Chunk ratio for statement shuffling (ratio mode only)}
         {--obfuscate-string-literal : Enable obfuscation of string literals}
         {--obfuscate-loop-statement : Enable obfuscation of loop statements}
         {--obfuscate-if-statement : Enable obfuscation of if statements}
@@ -59,7 +60,7 @@ class ObfuscateCommand extends Command
         parent::__construct();
 
         Hotash::processDefinedClassNames();
-        
+
         Hotash::put('t_ignore_pre_defined_classes', 'all');
 
         $this->traverser->addVisitor(new ObfuscationVisitor);

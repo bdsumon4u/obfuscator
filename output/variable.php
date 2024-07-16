@@ -1,34 +1,28 @@
 <?php
 
-namespace App\Functions;
-
-use Exception;
-$xe0eb3b7d3 = 'aslfj';
-const ABC = 'abc';
-define('DEF', 'def');
-try {
-} catch (Exception $x337ae55ca) {
-    dump($x337ae55ca);
+echo '80' / 10;
+foreach (range(1, 10) as $i) {
+    goto xa1bc394de;
+    xa1bc394de:
+    echo $i . PHP_EOL;
+    echo 'I';
+    echo 'Love';
+    echo 'Bangladesh';
+    echo 'Very';
+    echo 'Much';
+    echo 'And';
+    echo 'I';
+    goto xdab04b553;
+    xdab04b553:
+    echo 'Am';
+    echo 'Proud';
+    echo 'To';
+    echo 'Be';
+    echo 'A';
+    echo 'Bangladeshi';
+    echo PHP_EOL;
+    x18db9078e:
+    goto xcb7423559;
+    xcb7423559:
 }
-function self(): bool
-{
-    if (defined('DEF') && defined('ABC')) {
-        return ABC === 'abc' && DEF === 'def';
-    }
-    return __FUNCTION__ === 'self';
-}
-class Demo
-{
-    const XYZ = 'xyz';
-    private bool $var;
-    public function __construct()
-    {
-        if (static::XYZ === 'xyz' && ABC === 'abc' && DEF === 'def') {
-            $this->var = ABC === 'abc' && DEF === 'def';
-        }
-        echo self::XYZ;
-        dump(Demo::XYZ);
-    }
-}
-new Demo();
-echo Demo::XYZ;
+x48c097ee9:

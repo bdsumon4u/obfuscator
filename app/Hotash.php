@@ -13,12 +13,12 @@ class Hotash extends Collection
 
     public function comment($comment = ''): string
     {
-        $comment .= "/*   ___________________________________________________" . PHP_EOL;
-        $comment .= "    |    Obfuscated by Hotash - PHP Obfuscator   %-6.6s |" . PHP_EOL;
-        $comment .= "    |              on %s              |" . PHP_EOL;
-        $comment .= "    |  GitHub: https://github.com/bdsumon4u/obfuscator  |" . PHP_EOL;
-        $comment .= "    |___________________________________________________|" . PHP_EOL;
-        $comment .= "*/" . PHP_EOL;
+        $comment .= '/*   ___________________________________________________'.PHP_EOL;
+        $comment .= '    |    Obfuscated by Hotash - PHP Obfuscator   %-6.6s |'.PHP_EOL;
+        $comment .= '    |              on %s              |'.PHP_EOL;
+        $comment .= '    |  GitHub: https://github.com/bdsumon4u/obfuscator  |'.PHP_EOL;
+        $comment .= '    |___________________________________________________|'.PHP_EOL;
+        $comment .= '*/'.PHP_EOL;
 
         return sprintf($comment, static::VERSION, date('Y-m-d  H:i:s'));
     }
@@ -62,7 +62,7 @@ class Hotash extends Collection
 
     public function scrambler(string $type): Scrambler
     {
-        if (!isset($this->scramblers[$type])) {
+        if (! isset($this->scramblers[$type])) {
             $this->scramblers[$type] = Scrambler::make($type);
         }
 

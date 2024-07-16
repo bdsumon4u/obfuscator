@@ -1,44 +1,21 @@
 <?php
 
-namespace App\Functions;
+echo '80' / 10;
 
-use Exception;
-
-$var = 'aslfj';
-
-const ABC = 'abc';
-
-define('DEF', 'def');
-
-try {
-
-} catch (Exception $ex) {
-    dump($ex);
+foreach (range(1, 10) as $i) {
+    echo $i.PHP_EOL;
+    echo 'I';
+    echo 'Love';
+    echo 'Bangladesh';
+    echo 'Very';
+    echo 'Much';
+    echo 'And';
+    echo 'I';
+    echo 'Am';
+    echo 'Proud';
+    echo 'To';
+    echo 'Be';
+    echo 'A';
+    echo 'Bangladeshi';
+    echo PHP_EOL;
 }
-
-function self(): bool {
-    if (defined('DEF') && defined('ABC')) {
-        return ABC === 'abc' && DEF === 'def';
-    }
-
-    return __FUNCTION__ === 'self';
-}
-
-class Demo
-{
-    const XYZ = 'xyz';
-
-    private bool $var;
-
-    public function __construct()
-    {
-        if (static::XYZ === 'xyz' && ABC === 'abc' && DEF === 'def')
-        $this->var = ABC === 'abc' && DEF === 'def';
-        echo self::XYZ;
-        dump(Demo::XYZ);
-    }
-}
-
-new Demo();
-
-echo Demo::XYZ;

@@ -3,6 +3,7 @@
 namespace App\Functions;
 
 use Closure;
+
 class CEx extends \Exception
 {
     public function __construct(?string $message = null, $code = 0, $previous = null)
@@ -18,7 +19,7 @@ try {
     $var = 'Hello';
     $vvar = 'var';
     echo ${$vvar};
-    $func(fn() => $var, 'mystr');
+    $func(fn () => $var, 'mystr');
 } catch (CEx $e) {
     echo $e->getMessage();
 }

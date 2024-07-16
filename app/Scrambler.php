@@ -56,7 +56,7 @@ class Scrambler
 
     public static function make($type): static
     {
-        return match(true) {
+        return match (true) {
             $type == 'constant' => (new static())
                 ->caseSensitive()
                 ->ignore(static::$tReservedFunctionNames)
@@ -143,7 +143,8 @@ class Scrambler
         };
     }
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->r = md5(microtime(true));     // random seed
 
         // if (file_exists($file = "{$this->contextDirectory}/obfuscator/context/{$this->scrambleType}")) {
@@ -280,6 +281,6 @@ class Scrambler
 
     public function generateLabelName($prefix = '!label')
     {
-        return $prefix.($this->labelCounter++);
+        return $this->scramble($prefix.($this->labelCounter++));
     }
 }
