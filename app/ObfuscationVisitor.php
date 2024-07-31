@@ -42,6 +42,7 @@ class ObfuscationVisitor extends NodeVisitorAbstract
 
     public function leaveNode(Node $node)
     {
+        dump($node::class);
         if ($node instanceof Node\Stmt\Class_) {
             Hotash::put('current_class_name', null);
         }
@@ -327,12 +328,19 @@ class ObfuscationVisitor extends NodeVisitorAbstract
         // Obfuscate Namespace Names
         if (Hotash::get('t_obfuscate_namespace_name')) {
             $scrambler = Hotash::scrambler('namespace');
-            if (($node instanceof Node\Stmt\Namespace_) || ($node instanceof Node\UseItem)) {
+            // if ($node instanceof Node\Stmt\Namespace_) {
+            //     if ($node->name instanceof Node\Name) {
+            //         $node->name = new Node\Name(
+            //             $scrambler->scramble($node->name),
+            //             $node->name->getAttributes(),
+            //         );
+            //     }
+            // }
+            if ($node instanceof Node\UseItem) {
                 if ($node->name instanceof Node\Name) {
-                    $node->name = new Node\Name(
-                        $scrambler->scramble($node->name),
-                        $node->name->getAttributes(),
-                    );
+                    $parts = $node->name->getParts();
+                    $parts[count($parts) - 1] = $scrambler->scramble(end($parts));
+                    $node->name = new Node\Name($parts, $node->name->getAttributes());
                 }
             }
             if (($node instanceof Node\Expr\FuncCall) || ($node instanceof Node\Expr\ConstFetch)) {
@@ -354,12 +362,12 @@ class ObfuscationVisitor extends NodeVisitorAbstract
                         $node->name->getAttributes(),
                     );
                 }
-                if ($node->name instanceof Node\Expr\Variable) {
-                    $node->name = new Node\Expr\Variable(
-                        $scrambler->scramble($node->name),
-                        $node->name->getAttributes(),
-                    );
-                }
+                // if ($node->name instanceof Node\Expr\Variable) {
+                //     $node->name = new Node\Expr\Variable(
+                //         $scrambler->scramble($node->name),
+                //         $node->name->getAttributes(),
+                //     );
+                // }
             }
             if (($node instanceof Node\Expr\New_)
                 || ($node instanceof Node\Expr\Instanceof_)

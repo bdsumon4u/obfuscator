@@ -29,7 +29,7 @@ trait HasFile
             $nodes = $this->parser->parse($code);
             $stmts = $this->traverser->traverse($nodes);
             $code = $this->printer->prettyPrintFile($stmts);
-            file_put_contents($this->outputPath($file), $code);
+            file_put_contents($file, $code);
         } catch (\PhpParser\Error $e) {
             $this->error("Parse error: {$e->getMessage()}");
         }
